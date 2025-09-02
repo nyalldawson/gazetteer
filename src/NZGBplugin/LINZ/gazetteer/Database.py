@@ -87,15 +87,18 @@ class Database(object):
         return Config.get("connection_name") or None
 
     @classmethod
-    def set_stored_connection_name(cls, name: Optional[str]):
+    def set_stored_connection_details(
+        cls, connection_name: Optional[str], schema: Optional[str]
+    ):
         """
-        Sets the stored QGIS postgres connection name to use for the database
-        connection
+        Sets the stored QGIS postgres connection name and database schema
+        to use for the database connection
 
         If None, the stored connection name is removed
         """
-        if name:
-            Config.set("connection_name", name)
+        if connection_name:
+            Config.set("connection_name", connection_name)
+            Config.set("Database/schema", schema)
         else:
             Config.remove("connection_name")
 
@@ -128,10 +131,7 @@ class Database(object):
             cls.DATABASE = (
                 settings.value(f"{connection_settings_group}/database", None) or None
             )
-            # TODO
-            cls.SCHEMA = (
-                ""  # settings.value(f'{connection_settings_group}/port', None) or None
-            )
+            cls.SCHEMA = Config.get("Database/schema", None)
             cls.USER = (
                 settings.value(f"{connection_settings_group}/username", None) or None
             )

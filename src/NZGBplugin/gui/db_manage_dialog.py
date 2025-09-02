@@ -1,4 +1,5 @@
 from typing import Optional
+from functools import partial
 
 from qgis.PyQt.QtCore import QObject, Qt, QModelIndex, QItemSelectionModel
 from qgis.PyQt.QtWidgets import (
@@ -9,7 +10,7 @@ from qgis.PyQt.QtWidgets import (
     QLabel,
     QMenu,
 )
-from qgis.core import QgsBrowserProxyModel
+from qgis.core import Qgis, QgsBrowserProxyModel
 from qgis.gui import QgsBrowserTreeView, QgsGui, QgsDataItemGuiContext
 from qgis.utils import iface
 
@@ -20,18 +21,20 @@ class DbConnectionOnlyProxyModel(QgsBrowserProxyModel):
         self.setShownDataItemProviderKeyFilter(["PostGIS"])
 
     def hasChildren(self, parent=QModelIndex()):
-        # only want root item to be expandable, not individual connections
+        # only want root item and connections to be expandable, not individual schema
         data_item = self.browserModel().dataItem(self.mapToSource(parent))
-        if not data_item or data_item.path() == "pg:":
+        if not data_item:
             return True
 
-        return False
+        path_parts = data_item.path().split("/")
+        return len(path_parts) <= 2
 
     def flags(self, index):
         data_item = self.browserModel().dataItem(self.mapToSource(index))
         flags = super().flags(index)
-        if data_item.path() == "pg:":
-            # don't allow root item to be selected
+        path_parts = data_item.path().split("/")
+        if len(path_parts) <= 2:
+            # don't allow root item or connection item to be selected
             flags = Qt.ItemIsEnabled
 
         return flags
@@ -43,9 +46,9 @@ class DbConnectionOnlyProxyModel(QgsBrowserProxyModel):
         source_index = self.browserModel().index(source_row, 0, source_parent_index)
         data_item = self.browserModel().dataItem(source_index)
 
-        # only want root item and connection item, not schemas or tables
+        # only want root item, connection items and schemas, not tables
         path_parts = data_item.path().split("/")
-        return len(path_parts) <= 2
+        return len(path_parts) <= 3
 
 
 class DbManagerDialog(QDialog):
@@ -56,7 +59,7 @@ class DbManagerDialog(QDialog):
 
         gl = QGridLayout()
 
-        gl.addWidget(QLabel("Select database connection:"), 0, 0, 1, 1)
+        gl.addWidget(QLabel("Select database connection and schema:"), 0, 0, 1, 1)
 
         self.browser_model = iface.browserModel()
 
@@ -122,18 +125,49 @@ class DbManagerDialog(QDialog):
         self.raise_()
         self.activateWindow()
 
-    def set_selected_connection_name(self, name: Optional[str]):
+    def set_selected_connection_details(
+        self, name: Optional[str], schema: Optional[str]
+    ):
         """
-        Sets the selected connection name
+        Sets the selected connection name and schema
         """
         if not name:
             self.browser_view.selectionModel().clear()
         else:
             item_index = self.browser_model.findPath(f"pg:/{name}")
             if item_index.isValid():
+                connection_item = self.browser_model.dataItem(item_index)
                 proxy_index = self.proxy_model.mapFromSource(item_index)
                 self.browser_view.selectionModel().select(
                     proxy_index, QItemSelectionModel.ClearAndSelect
+                )
+                self.browser_view.expand(proxy_index)
+                if connection_item.state() == Qgis.BrowserItemState.Populated:
+                    schema_item_index = self.browser_model.findPath(
+                        f"pg:/{name}/{schema}"
+                    )
+                    self.browser_view.selectionModel().select(
+                        self.proxy_model.mapFromSource(schema_item_index),
+                        QItemSelectionModel.ClearAndSelect,
+                    )
+                else:
+                    # when schemas have populated, select the stored schema name
+                    self.browser_model.rowsInserted.connect(
+                        partial(self._rows_added, item_index, schema)
+                    )
+
+    def _rows_added(self, connection_index, schema: str, parent, first, last):
+        if parent != connection_index:
+            return
+
+        for row in range(first, last + 1):
+            new_child_index = self.browser_model.index(row, 0, parent)
+            new_child_item = self.browser_model.dataItem(new_child_index)
+            new_schema = new_child_item.path().split("/")[-1]
+            if schema == new_schema:
+                self.browser_view.selectionModel().select(
+                    self.proxy_model.mapFromSource(new_child_index),
+                    QItemSelectionModel.ClearAndSelect,
                 )
 
     def selected_connection_name(self) -> Optional[str]:
@@ -147,4 +181,19 @@ class DbManagerDialog(QDialog):
         selected_item = self.browser_model.dataItem(
             self.proxy_model.mapToSource(selection.indexes()[0])
         )
-        return selected_item.name()
+        path_parts = selected_item.path().split("/")
+        return path_parts[1]
+
+    def selected_schema_name(self) -> Optional[str]:
+        """
+        Returns the selected schema name
+        """
+        selection = self.browser_view.selectionModel().selection()
+        if not selection.indexes():
+            return None
+
+        selected_item = self.browser_model.dataItem(
+            self.proxy_model.mapToSource(selection.indexes()[0])
+        )
+        path_parts = selected_item.path().split("/")
+        return path_parts[2]
