@@ -70,7 +70,7 @@ class Plugin(object):
         self._infoaction.triggered.connect(self._showInfo)
 
         self._configure_database_action = QAction(
-            GuiUtils.get_icon("admin.svg"),
+            GuiUtils.get_icon("database_connection.svg"),
             "Configure Database Connection…",
             self._iface.mainWindow(),
         )
