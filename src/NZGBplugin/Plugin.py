@@ -48,7 +48,7 @@ class Plugin(object):
     def initGui(self):
         self._runaction = QAction(
             GuiUtils.get_icon("icon.svg"),
-            "Open the gazetteer editor",
+            "Open the Gazetteer Editor…",
             self._iface.mainWindow(),
         )
         self._runaction.setWhatsThis("Open the gazetteer editor window")
@@ -62,7 +62,7 @@ class Plugin(object):
 
         self._infoaction = QAction(
             GuiUtils.get_icon("help.svg"),
-            "About gazetteer application",
+            "About Gazetteer Application…",
             self._iface.mainWindow(),
         )
         self._infoaction.setWhatsThis("Information on gazetteer application settings")
@@ -71,14 +71,14 @@ class Plugin(object):
 
         self._configure_database_action = QAction(
             GuiUtils.get_icon("admin.svg"),
-            "Configure Database Connection",
+            "Configure Database Connection…",
             self._iface.mainWindow(),
         )
         self._configure_database_action.triggered.connect(self._configure_database)
 
         self._adminaction = QAction(
             GuiUtils.get_icon("admin.svg"),
-            "Administration functions",
+            "Administration Functions…",
             self._iface.mainWindow(),
         )
         self._adminaction.setWhatsThis("Update the web database, administer users, etc")
