@@ -23,8 +23,6 @@ from sqlalchemy import event
 from sqlalchemy.pool import Pool
 from sqlalchemy.sql import text
 
-_instance = None
-
 func = expression.func
 
 from . import Config
@@ -37,6 +35,8 @@ class Database(object):
     SCHEMA: Optional[str] = None
     USER: Optional[str] = None
     PASSWORD: Optional[str] = None
+
+    _INSTANCE: Optional["Database"] = None
 
     def __init__(self):
         connection_string = "/" + Database.DATABASE + "?host=" + Database.HOST
@@ -164,46 +164,45 @@ class Database(object):
             "password": Database.PASSWORD,
         }
 
+    @classmethod
+    def instance(cls) -> "Database":
+        admins = None
+        if not cls._INSTANCE:
+            try:
+                cls._INSTANCE = Database()
+                if not userIsValid():
+                    cls._INSTANCE = None
+                    admins = gazetteerAdmins()
+            except:
+                msg = str(sys.exc_info()[1])
+                raise RuntimeError(
+                    "Current user "
+                    + str(cls.USER)
+                    + " is not authorized to access the gazetteer database.\n"
+                    + msg
+                )
+
+        if not cls._INSTANCE:
+            raise RuntimeError(
+                "Current user "
+                + str(cls.USER)
+                + " is not authorized to access the gazetteer database\n"
+                + "Contact a gazetteer admin:\n    "
+                + "\n    ".join(admins)
+            )
+
+        return cls._INSTANCE
+
 
 Database.update_connection_details()
 
 
-def instance():
-    global _instance
-    admins = None
-    if not _instance:
-        try:
-            _instance = Database()
-            if not userIsValid():
-                _instance = None
-                admins = gazetteerAdmins()
-        except:
-            msg = str(sys.exc_info()[1])
-            raise RuntimeError(
-                "Current user "
-                + str(Database.USER)
-                + " is not authorized to access the gazetteer database.\n"
-                + msg
-            )
-
-    if not _instance:
-        raise RuntimeError(
-            "Current user "
-            + str(Database.USER)
-            + " is not authorized to access the gazetteer database\n"
-            + "Contact a gazetteer admin:\n    "
-            + "\n    ".join(admins)
-        )
-
-    return _instance
-
-
 def engine():
-    return instance().engine()
+    return Database.instance().engine()
 
 
 def session():
-    return instance().session()
+    return Database.instance().session()
 
 
 def commit():

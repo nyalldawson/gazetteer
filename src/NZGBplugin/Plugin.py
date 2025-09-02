@@ -212,7 +212,7 @@ class Plugin(object):
 
             self._controller = Controller.instance()
             # Check if user is valid - will raise exception if not
-            dbinstance = self._controller.database().instance()
+            _ = self._controller.database().Database.instance()
 
             # Check version of application
             version = self._controller.database().scalar(
