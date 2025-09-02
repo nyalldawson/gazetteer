@@ -70,6 +70,36 @@ class Database(object):
         db_conn.cursor().execute(sql)
 
     @classmethod
+    def has_stored_connection_details(cls) -> bool:
+        """
+        Returns True if the database connection details are stored for the user,
+        or False if they have been retrieved from the environment or hardcoded
+        defaults
+        """
+        return Config.contains("Connection") or Config.contains("Database")
+
+    @classmethod
+    def stored_connection_name(cls) -> Optional[str]:
+        """
+        Returns the stored QGIS postgres connection name to use for the database
+        connection, or None if not set
+        """
+        return Config.get("connection_name") or None
+
+    @classmethod
+    def set_stored_connection_name(cls, name: Optional[str]):
+        """
+        Sets the stored QGIS postgres connection name to use for the database
+        connection
+
+        If None, the stored connection name is removed
+        """
+        if name:
+            Config.set("connection_name", name)
+        else:
+            Config.remove("connection_name")
+
+    @classmethod
     def update_connection_details(cls):
         # default database connection parameters
         # prefer QSettings, then environment, finally hardcoded defaults
@@ -84,36 +114,44 @@ class Database(object):
         old_user = cls.USER
         old_password = cls.PASSWORD
 
-        cls.HOST = (
-            Config.get("Database/host", None)
-            if Config.contains("Database")
-            else (os.environ.get("PGHOST") or "prdassgzdb01")
-        )
-        cls.PORT = (
-            Config.get("Database/port", None)
-            if Config.contains("Database")
-            else (os.environ.get("PGPORT") or "5432")
-        )
-        cls.DATABASE = (
-            Config.get("Database/database", None)
-            if Config.contains("Database")
-            else (os.environ.get("PGDATABASE") or "gazetteer")
-        )
-        cls.SCHEMA = (
-            Config.get("Database/schema", None)
-            if Config.contains("Database")
-            else (os.environ.get("PGSCHEMA") or "gazetteer")
-        )
-        cls.USER = (
-            Config.get("Database/user", None)
-            if Config.contains("Database")
-            else (os.environ.get("PGUSER") or getpass.getuser())
-        )
-        cls.PASSWORD = (
-            Config.get("Database/password", None)
-            if Config.contains("Database")
-            else (os.environ.get("PGPASSWORD") or None)
-        )
+        if Config.contains("connection_name"):
+            # retrieve QGIS stored connection from QgsSettings
+            from qgis.core import QgsSettings
+
+            settings = QgsSettings()
+
+            connection_name = Config.get("connection_name")
+            connection_settings_group = f"PostgreSQL/connections/{connection_name}"
+
+            cls.HOST = settings.value(f"{connection_settings_group}/host", None) or None
+            cls.PORT = settings.value(f"{connection_settings_group}/port", None) or None
+            cls.DATABASE = (
+                settings.value(f"{connection_settings_group}/database", None) or None
+            )
+            # TODO
+            cls.SCHEMA = (
+                ""  # settings.value(f'{connection_settings_group}/port', None) or None
+            )
+            cls.USER = (
+                settings.value(f"{connection_settings_group}/username", None) or None
+            )
+            cls.PASSWORD = (
+                settings.value(f"{connection_settings_group}/password", None) or None
+            )
+        elif Config.contains("Database"):
+            cls.HOST = Config.get("Database/host", None)
+            cls.PORT = Config.get("Database/port", None)
+            cls.DATABASE = Config.get("Database/database", None)
+            cls.SCHEMA = Config.get("Database/schema", None)
+            cls.USER = Config.get("Database/user", None)
+            cls.PASSWORD = Config.get("Database/password", None)
+        else:
+            cls.HOST = os.environ.get("PGHOST") or "prdassgzdb01"
+            cls.PORT = os.environ.get("PGPORT") or "5432"
+            cls.DATABASE = os.environ.get("PGDATABASE") or "gazetteer"
+            cls.SCHEMA = os.environ.get("PGSCHEMA") or "gazetteer"
+            cls.USER = os.environ.get("PGUSER") or getpass.getuser()
+            cls.PASSWORD = os.environ.get("PGPASSWORD") or None
 
         changed = (
             cls.HOST != old_host
