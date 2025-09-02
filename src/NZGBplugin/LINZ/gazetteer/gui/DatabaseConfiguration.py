@@ -11,7 +11,7 @@
 ################################################################################
 
 
-from . import Config
+from LINZ.gazetteer import Config
 
 
 def getConfiguration():
