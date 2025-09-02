@@ -14,25 +14,6 @@
 from LINZ.gazetteer import Config
 
 
-def getConfiguration():
-    get = Config.get
-    return dict(
-        host=get("Database/host") or None,
-        port=get("Database/port") or None,
-        database=get("Database/database") or None,
-        schema=get("Database/schema") or None,
-        user=get("Database/user") or None,
-        password=get("Database/password") or None,
-    )
-
-
-def configureDatabase():
-    from LINZ.gazetteer.Database import Database
-
-    config = getConfiguration()
-    Database.set_connection(**config)
-
-
 syntax = """
 Configure the gazetter database
 
@@ -51,7 +32,9 @@ or "check" to check connectivity to database
 """
 
 if __name__ != "__main__":
-    configureDatabase()
+    from LINZ.gazetteer.Database import Database
+
+    Database.update_connection_details()
 else:
     import sys
     from os.path import dirname, abspath
@@ -107,7 +90,7 @@ else:
             Config.set("Database/" + key, value)
 
     print("Configuration set")
-    configureDatabase()
+    Database.Database.update_connection_details()
     dbconfig = Database.Database.get_connection()
     for k in keys:
         print("%s: %s" % (k, dbconfig[k]))

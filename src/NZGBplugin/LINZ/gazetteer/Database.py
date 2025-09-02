@@ -27,15 +27,16 @@ _instance = None
 
 func = expression.func
 
+from . import Config
+
 
 class Database(object):
-    # default database connection parameters
-    HOST = os.environ.get("PGHOST") or "prdassgzdb01"
-    PORT = os.environ.get("PGPORT") or "5432"
-    DATABASE = os.environ.get("PGDATABASE") or "gazetteer"
-    SCHEMA = os.environ.get("PGSCHEMA") or "gazetteer"
-    USER = os.environ.get("PGUSER") or getpass.getuser()
-    PASSWORD = os.environ.get("PGPASSWORD") or None
+    HOST: Optional[str] = None
+    PORT: Optional[str] = None
+    DATABASE: Optional[str] = None
+    SCHEMA: Optional[str] = None
+    USER: Optional[str] = None
+    PASSWORD: Optional[str] = None
 
     def __init__(self):
         connection_string = "/" + Database.DATABASE + "?host=" + Database.HOST
@@ -67,6 +68,56 @@ class Database(object):
     def set_search_path(db_conn, conn_proxy):
         sql = "set search_path=" + Database.SCHEMA + ", public"
         db_conn.cursor().execute(sql)
+
+    @classmethod
+    def update_connection_details(cls):
+        # default database connection parameters
+        # prefer QSettings, then environment, finally hardcoded defaults
+        # note that if the QSettings "database" key exists, then we get ALL
+        # the database properties from QSettings -- we don't want to fallback to
+        # env variables or defaults if a particular configuration key isn't
+        # applicable to the stored connection and is set to "" or None
+        cls.HOST = (
+            Config.get("Database/host", None)
+            if Config.contains("Database")
+            else (os.environ.get("PGHOST") or "prdassgzdb01")
+        )
+        cls.PORT = (
+            Config.get("Database/port", None)
+            if Config.contains("Database")
+            else (os.environ.get("PGPORT") or "5432")
+        )
+        cls.DATABASE = (
+            Config.get("Database/database", None)
+            if Config.contains("Database")
+            else (os.environ.get("PGDATABASE") or "gazetteer")
+        )
+        cls.SCHEMA = (
+            Config.get("Database/schema", None)
+            if Config.contains("Database")
+            else (os.environ.get("PGSCHEMA") or "gazetteer")
+        )
+        cls.USER = (
+            Config.get("Database/user", None)
+            if Config.contains("Database")
+            else (os.environ.get("PGUSER") or getpass.getuser())
+        )
+        cls.PASSWORD = (
+            Config.get("Database/password", None)
+            if Config.contains("Database")
+            else (os.environ.get("PGPASSWORD") or None)
+        )
+
+    @classmethod
+    def get_configuration(cls) -> Dict[str, Optional[str]]:
+        return dict(
+            host=cls.DATABASE or None,
+            port=cls.PORT or None,
+            database=cls.DATABASE or None,
+            schema=cls.SCHEMA or None,
+            user=cls.USER or None,
+            password=cls.PASSWORD or None,
+        )
 
     @classmethod
     def set_connection(
@@ -112,6 +163,9 @@ class Database(object):
             "user": Database.USER,
             "password": Database.PASSWORD,
         }
+
+
+Database.update_connection_details()
 
 
 def instance():
