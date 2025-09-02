@@ -29,6 +29,7 @@ func = expression.func
 
 
 class Database(object):
+    # default database connection parameters
     HOST = os.environ.get("PGHOST") or "prdassgzdb01"
     PORT = os.environ.get("PGPORT") or "5432"
     DATABASE = os.environ.get("PGDATABASE") or "gazetteer"
