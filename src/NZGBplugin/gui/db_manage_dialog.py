@@ -1,6 +1,6 @@
 from typing import Optional
 
-from qgis.PyQt.QtCore import QObject, Qt, QModelIndex
+from qgis.PyQt.QtCore import QObject, Qt, QModelIndex, QItemSelectionModel
 from qgis.PyQt.QtWidgets import (
     QDialog,
     QWidget,
@@ -121,3 +121,30 @@ class DbManagerDialog(QDialog):
         self.show()
         self.raise_()
         self.activateWindow()
+
+    def set_selected_connection_name(self, name: Optional[str]):
+        """
+        Sets the selected connection name
+        """
+        if not name:
+            self.browser_view.selectionModel().clear()
+        else:
+            item_index = self.browser_model.findPath(f"pg:/{name}")
+            if item_index.isValid():
+                proxy_index = self.proxy_model.mapFromSource(item_index)
+                self.browser_view.selectionModel().select(
+                    proxy_index, QItemSelectionModel.ClearAndSelect
+                )
+
+    def selected_connection_name(self) -> Optional[str]:
+        """
+        Returns the selected connection name
+        """
+        selection = self.browser_view.selectionModel().selection()
+        if not selection.indexes():
+            return None
+
+        selected_item = self.browser_model.dataItem(
+            self.proxy_model.mapToSource(selection.indexes()[0])
+        )
+        return selected_item.name()
