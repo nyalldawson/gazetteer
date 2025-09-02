@@ -27,10 +27,10 @@ def getConfiguration():
 
 
 def configureDatabase():
-    from LINZ.gazetteer import Database
+    from LINZ.gazetteer.Database import Database
 
     config = getConfiguration()
-    Database.setConnection(**config)
+    Database.set_connection(**config)
 
 
 syntax = """
@@ -108,7 +108,7 @@ else:
 
     print("Configuration set")
     configureDatabase()
-    dbconfig = Database.getConnection()
+    dbconfig = Database.Database.get_connection()
     for k in keys:
         print("%s: %s" % (k, dbconfig[k]))
 

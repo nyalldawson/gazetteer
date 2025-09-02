@@ -9,12 +9,11 @@
 #
 ################################################################################
 
-from builtins import str
-from builtins import object
 import re
 import os
 import sys
 import getpass
+from typing import Optional, Dict
 
 import sqlalchemy
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -27,11 +26,6 @@ from sqlalchemy.sql import text
 _instance = None
 
 func = expression.func
-
-
-def set_search_path(db_conn, conn_proxy):
-    sql = "set search_path=" + Database.SCHEMA + ", public"
-    db_conn.cursor().execute(sql)
 
 
 class Database(object):
@@ -54,7 +48,7 @@ class Database(object):
 
         self._engine = sqlalchemy.create_engine(connection_string)
         # event.listen(self._engine, 'connect', set_search_path )
-        event.listen(Pool, "connect", set_search_path)
+        event.listen(Pool, "connect", Database.set_search_path)
         self._session = None
 
     def engine(self):
@@ -68,44 +62,55 @@ class Database(object):
             self._session.execute(sql)
         return self._session
 
+    @staticmethod
+    def set_search_path(db_conn, conn_proxy):
+        sql = "set search_path=" + Database.SCHEMA + ", public"
+        db_conn.cursor().execute(sql)
 
-def setConnection(
-    host=None, port=None, database=None, schema=None, user=None, password=None
-):
-    changed = False
-    if host is not None and host != Database.HOST:
-        Database.HOST = host
-        changed = True
-    if port is not None and port != Database.PORT:
-        Database.PORT = port
-        changed = True
-    if database is not None and database != Database.DATABASE:
-        Database.DATABASE = database
-        changed = True
-    if schema is not None and schema != schema:
-        Database.SCHEMA = schema
-        changed = True
-    if user is not None and user != Database.USER:
-        Database.USER = user
-        changed = True
-    if password is not None and password != Database.PASSWORD:
-        Database.PASSWORD = password
-        changed = True
-    if changed and _instance:
-        raise RuntimeError(
-            "Cannot set connection to database after it has been instantiated"
-        )
+    @classmethod
+    def set_connection(
+        cls,
+        host: Optional[str] = None,
+        port: Optional[str] = None,
+        database: Optional[str] = None,
+        schema: Optional[str] = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+    ):
+        changed = False
+        if host is not None and host != Database.HOST:
+            Database.HOST = host
+            changed = True
+        if port is not None and port != Database.PORT:
+            Database.PORT = port
+            changed = True
+        if database is not None and database != Database.DATABASE:
+            Database.DATABASE = database
+            changed = True
+        if schema is not None and schema != schema:
+            Database.SCHEMA = schema
+            changed = True
+        if user is not None and user != Database.USER:
+            Database.USER = user
+            changed = True
+        if password is not None and password != Database.PASSWORD:
+            Database.PASSWORD = password
+            changed = True
+        if changed and _instance:
+            raise RuntimeError(
+                "Cannot set connection to database after it has been instantiated"
+            )
 
-
-def getConnection():
-    return {
-        "host": Database.HOST,
-        "port": Database.PORT,
-        "database": Database.DATABASE,
-        "schema": Database.SCHEMA,
-        "user": Database.USER,
-        "password": Database.PASSWORD,
-    }
+    @classmethod
+    def get_connection(cls) -> Dict[str, Optional[str]]:
+        return {
+            "host": Database.HOST,
+            "port": Database.PORT,
+            "database": Database.DATABASE,
+            "schema": Database.SCHEMA,
+            "user": Database.USER,
+            "password": Database.PASSWORD,
+        }
 
 
 def instance():

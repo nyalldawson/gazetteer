@@ -64,7 +64,7 @@ class Controller(QObject):
 
     @classmethod
     def databaseConfiguration(self):
-        return Database.getConnection()
+        return Database.Database.get_connection()
 
     @pyqtSlot(int)
     def isFavourite(self, name_id):
