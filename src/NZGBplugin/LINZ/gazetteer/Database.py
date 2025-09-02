@@ -24,35 +24,32 @@ from sqlalchemy import event
 from sqlalchemy.pool import Pool
 from sqlalchemy.sql import text
 
-_host = os.environ.get("PGHOST") or "prdassgzdb01"
-_port = os.environ.get("PGPORT") or "5432"
-_database = os.environ.get("PGDATABASE") or "gazetteer"
-_schema = os.environ.get("PGSCHEMA") or "gazetteer"
-_user = os.environ.get("PGUSER") or getpass.getuser()
-_password = os.environ.get("PGPASSWORD") or None
 _instance = None
-
 
 func = expression.func
 
 
 def set_search_path(db_conn, conn_proxy):
-    sql = "set search_path=" + _schema + ", public"
+    sql = "set search_path=" + Database.SCHEMA + ", public"
     db_conn.cursor().execute(sql)
 
 
 class Database(object):
+    HOST = os.environ.get("PGHOST") or "prdassgzdb01"
+    PORT = os.environ.get("PGPORT") or "5432"
+    DATABASE = os.environ.get("PGDATABASE") or "gazetteer"
+    SCHEMA = os.environ.get("PGSCHEMA") or "gazetteer"
+    USER = os.environ.get("PGUSER") or getpass.getuser()
+    PASSWORD = os.environ.get("PGPASSWORD") or None
+
     def __init__(self):
-        global _host, _port, _database, _schema, _user
+        connection_string = "/" + Database.DATABASE + "?host=" + Database.HOST
+        if Database.PORT:
+            connection_string += "&port=" + Database.PORT
 
-        connection_string = "/" + _database + "?host=" + _host
-        if _port:
-            connection_string += "&port=" + _port
-
-        if _user:
-            user = _user
-            user = user + ":" + (_password or "")
-            connection_string = user + "@" + connection_string
+        if Database.USER:
+            user_string = Database.USER + ":" + (Database.PASSWORD or "")
+            connection_string = user_string + "@" + connection_string
         connection_string = "postgresql+psycopg2://" + connection_string
 
         self._engine = sqlalchemy.create_engine(connection_string)
@@ -67,7 +64,7 @@ class Database(object):
         if not self._session:
             Session = scoped_session(sessionmaker(bind=self._engine))
             self._session = Session()
-            sql = "set search_path=" + _schema + ", public"
+            sql = "set search_path=" + Database.SCHEMA + ", public"
             self._session.execute(sql)
         return self._session
 
@@ -75,25 +72,24 @@ class Database(object):
 def setConnection(
     host=None, port=None, database=None, schema=None, user=None, password=None
 ):
-    global _host, _database, _schema, _user, _port, _password
     changed = False
-    if host is not None and host != _host:
-        _host = host
+    if host is not None and host != Database.HOST:
+        Database.HOST = host
         changed = True
-    if port is not None and port != _port:
-        _port = port
+    if port is not None and port != Database.PORT:
+        Database.PORT = port
         changed = True
-    if database is not None and database != _database:
-        _database = database
+    if database is not None and database != Database.DATABASE:
+        Database.DATABASE = database
         changed = True
     if schema is not None and schema != schema:
-        _schema = schema
+        Database.SCHEMA = schema
         changed = True
-    if user is not None and user != _user:
-        _user = user
+    if user is not None and user != Database.USER:
+        Database.USER = user
         changed = True
-    if password is not None and password != _password:
-        _password = password
+    if password is not None and password != Database.PASSWORD:
+        Database.PASSWORD = password
         changed = True
     if changed and _instance:
         raise RuntimeError(
@@ -102,19 +98,18 @@ def setConnection(
 
 
 def getConnection():
-    global _host, _port, _database, _schema, _user, _password
     return {
-        "host": _host,
-        "port": _port,
-        "database": _database,
-        "schema": _schema,
-        "user": _user,
-        "password": _password,
+        "host": Database.HOST,
+        "port": Database.PORT,
+        "database": Database.DATABASE,
+        "schema": Database.SCHEMA,
+        "user": Database.USER,
+        "password": Database.PASSWORD,
     }
 
 
 def instance():
-    global _instance, _user
+    global _instance
     admins = None
     if not _instance:
         try:
@@ -126,7 +121,7 @@ def instance():
             msg = str(sys.exc_info()[1])
             raise RuntimeError(
                 "Current user "
-                + str(_user)
+                + str(Database.USER)
                 + " is not authorized to access the gazetteer database.\n"
                 + msg
             )
@@ -134,7 +129,7 @@ def instance():
     if not _instance:
         raise RuntimeError(
             "Current user "
-            + str(_user)
+            + str(Database.USER)
             + " is not authorized to access the gazetteer database\n"
             + "Contact a gazetteer admin:\n    "
             + "\n    ".join(admins)
