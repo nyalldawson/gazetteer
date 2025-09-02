@@ -51,6 +51,8 @@ class DbConnectionOnlyProxyModel(QgsBrowserProxyModel):
 class DbManagerDialog(QDialog):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
+        self.setObjectName("DbManagerDialog")
+        QgsGui.enableAutoGeometryRestore(self)
 
         gl = QGridLayout()
 
