@@ -77,6 +77,13 @@ class Database(object):
         # the database properties from QSettings -- we don't want to fallback to
         # env variables or defaults if a particular configuration key isn't
         # applicable to the stored connection and is set to "" or None
+        old_host = cls.HOST
+        old_port = cls.PORT
+        old_database = cls.DATABASE
+        old_schema = cls.SCHEMA
+        old_user = cls.USER
+        old_password = cls.PASSWORD
+
         cls.HOST = (
             Config.get("Database/host", None)
             if Config.contains("Database")
@@ -108,6 +115,19 @@ class Database(object):
             else (os.environ.get("PGPASSWORD") or None)
         )
 
+        changed = (
+            cls.HOST != old_host
+            or cls.PORT != old_port
+            or cls.DATABASE != old_database
+            or cls.SCHEMA != old_schema
+            or cls.USER != old_user
+            or cls.PASSWORD != old_password
+        )
+        if changed and cls._INSTANCE:
+            raise RuntimeError(
+                "Cannot change database connection parameters after it has been instantiated"
+            )
+
     @classmethod
     def get_configuration(cls) -> Dict[str, Optional[str]]:
         return dict(
@@ -118,40 +138,6 @@ class Database(object):
             user=cls.USER or None,
             password=cls.PASSWORD or None,
         )
-
-    @classmethod
-    def set_connection(
-        cls,
-        host: Optional[str] = None,
-        port: Optional[str] = None,
-        database: Optional[str] = None,
-        schema: Optional[str] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
-    ):
-        changed = False
-        if host is not None and host != Database.HOST:
-            Database.HOST = host
-            changed = True
-        if port is not None and port != Database.PORT:
-            Database.PORT = port
-            changed = True
-        if database is not None and database != Database.DATABASE:
-            Database.DATABASE = database
-            changed = True
-        if schema is not None and schema != schema:
-            Database.SCHEMA = schema
-            changed = True
-        if user is not None and user != Database.USER:
-            Database.USER = user
-            changed = True
-        if password is not None and password != Database.PASSWORD:
-            Database.PASSWORD = password
-            changed = True
-        if changed and _instance:
-            raise RuntimeError(
-                "Cannot set connection to database after it has been instantiated"
-            )
 
     @classmethod
     def get_connection(cls) -> Dict[str, Optional[str]]:
