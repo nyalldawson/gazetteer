@@ -131,12 +131,12 @@ class Database(object):
     @classmethod
     def get_connection_details(cls) -> Dict[str, Optional[str]]:
         return {
-            "host": Database.HOST,
-            "port": Database.PORT,
-            "database": Database.DATABASE,
-            "schema": Database.SCHEMA,
-            "user": Database.USER,
-            "password": Database.PASSWORD,
+            "host": cls.HOST,
+            "port": cls.PORT,
+            "database": cls.DATABASE,
+            "schema": cls.SCHEMA,
+            "user": cls.USER,
+            "password": cls.PASSWORD,
         }
 
     @classmethod
