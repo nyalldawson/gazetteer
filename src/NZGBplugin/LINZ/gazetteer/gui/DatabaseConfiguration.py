@@ -91,7 +91,7 @@ else:
 
     print("Configuration set")
     Database.Database.update_connection_details()
-    dbconfig = Database.Database.get_connection()
+    dbconfig = Database.Database.get_connection_details()
     for k in keys:
         print("%s: %s" % (k, dbconfig[k]))
 

@@ -129,18 +129,7 @@ class Database(object):
             )
 
     @classmethod
-    def get_configuration(cls) -> Dict[str, Optional[str]]:
-        return dict(
-            host=cls.DATABASE or None,
-            port=cls.PORT or None,
-            database=cls.DATABASE or None,
-            schema=cls.SCHEMA or None,
-            user=cls.USER or None,
-            password=cls.PASSWORD or None,
-        )
-
-    @classmethod
-    def get_connection(cls) -> Dict[str, Optional[str]]:
+    def get_connection_details(cls) -> Dict[str, Optional[str]]:
         return {
             "host": Database.HOST,
             "port": Database.PORT,
